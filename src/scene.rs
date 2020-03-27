@@ -96,8 +96,16 @@ impl Vector3 {
         }
     }
 
+    pub fn norm(&self) -> f64 {
+        self.x.powi(2) + self.y.powi(2) + self.z.powi(2)
+    }
+
     pub fn dot(self, rhs: &Vector3) -> f64 {
         self.x * rhs.x + self.y * rhs.y + self.z * rhs.z
+    }
+
+    pub fn euclidean_distance(&self) -> f64 {
+        (self.x.powi(2) + self.y.powi(2) + self.z.powi(2)).sqrt()
     }
 }
 
@@ -137,12 +145,27 @@ pub enum Light {
     Spherical(SphericalLight),
 }
 
+impl Light {
+    pub fn color(&self) -> &Color {
+        match *self {
+            Light::Directional(ref d) => &d.color,
+            Light::Spherical(ref s) => &s.color,
+        }
+    }
+    pub fn distance(&self, hit_point: &Point) -> Vector3 {
+        match *self {
+            Light::Directional(_) => Vector3 {x: 1.0e10, y: 1.0e10, z: 1.0e10},   // large distance approx inf
+            Light::Spherical(s) => s.point - *hit_point,
+        }
+    }
+}
+
 pub struct Scene {
     pub width: u32,
     pub height: u32,
     pub fov: f64,
     pub elements: Vec<Element>,
-    pub lights: Vec<DirectionalLight>,
+    pub lights: Vec<Light>,
     pub shadow_bias: f64,
 }
 

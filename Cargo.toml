@@ -1,5 +1,5 @@
 [package]
-name = "rayTracer"
+name = "Ray_Tracer"
 version = "0.1.0"
 authors = ["Sebastian Fiorini <sebf465@gmail.com>"]
 edition = "2018"

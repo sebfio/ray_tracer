@@ -38,21 +38,32 @@ fn get_color(scene: &Scene, ray: &Ray, intersection: &Intersection) -> Color {
     };
 
     for light in &scene.lights {
-        let direction_to_light = light.direction * -1.0;
+        let direction_to_light = match light {
+            Light::Directional(d) => d.direction * -1.0,
+            Light::Spherical(s) => (s.point - hit_point).normalize(),
+        };
 
         let shadow_ray = Ray {
             origin: hit_point + (direction_to_light * scene.shadow_bias),
             direction: direction_to_light,
         };
 
-        let in_light = scene.trace(&shadow_ray).is_none();
+        let shadow_intersection = scene.trace(&shadow_ray);
+        let in_light = shadow_intersection.is_none() || shadow_intersection.unwrap().distance > light.distance(&hit_point).euclidean_distance();
 
-        let light_intensity = if in_light { light.intensity } else { 0.0 };
-        let light_power = (surface_normal.dot(&direction_to_light) as f32).max(0.0) *
-                        light_intensity;
+        let light_intensity = match light {
+            Light::Directional(light) => {
+                if in_light { light.intensity } else { 0.0 }
+            }
+            Light::Spherical(s) => {
+                let r2 = (s.point - hit_point).norm() as f32;
+                s.intensity / (4.0 * ::std::f32::consts::PI * r2)
+            }
+        };
+        let light_power = (surface_normal.dot(&direction_to_light) as f32).max(0.0) * light_intensity;
         let light_reflected = intersection.element.material().albedo / std::f32::consts::PI;
 
-        let light_color = light.color * light_power * light_reflected;
+        let light_color = light.color().clone() * light_power * light_reflected;
         color = color + (*intersection.element.color() * light_color);
     }
     color
@@ -135,7 +146,7 @@ fn test_can_render_scene() {
             })
         ],
         lights: vec![
-            DirectionalLight {
+            Light::Directional( DirectionalLight {
                 direction: Vector3 {
                     x: -0.07,
                     y: -0.707,
@@ -147,8 +158,8 @@ fn test_can_render_scene() {
                     blue: 1.0,
                 },
                 intensity: 1.0
-            },
-            DirectionalLight {
+            }),
+            Light::Directional( DirectionalLight {
                 direction: Vector3 {
                     x: 0.207,
                     y: -0.707,
@@ -160,7 +171,20 @@ fn test_can_render_scene() {
                     blue: 0.1,
                 },
                 intensity: 1.0
-            },
+            }),
+            Light::Spherical( SphericalLight {
+                point: Point {
+                    x: 0.0,
+                    y: 0.0,
+                    z: -1.0,
+                },
+                color: Color {
+                    red: 1.0,
+                    green: 1.0,
+                    blue: 1.0,
+                },
+                intensity: 3.0,
+            })
         ],
         shadow_bias: 1e-10
     };
