@@ -1,11 +1,48 @@
-use std::num::*;
-use std::ops::{Sub};
+use std::ops::{Add, Sub, Mul};
 
 #[derive(Clone, Copy)]
 pub struct Color {
     pub red: f32,
     pub green: f32,
     pub blue: f32,
+}
+
+impl Add for Color {
+    type Output = Color;
+    fn add(self, other: Color) -> Color {
+        Color {
+            red: self.red + other.red,
+            green: self.green + other.green,
+            blue: self.blue + other.blue,
+        }
+    }
+}
+
+impl Mul<Color> for Color {
+    type Output = Color;
+    fn mul(self, other: Color) -> Color {
+        Color {
+            red: self.red * other.red,
+            green: self.green * other.green,
+            blue: self.blue * other.blue,
+        }
+    }
+}
+
+impl Mul<f32> for Color {
+    type Output = Color;
+    fn mul(self, intensity: f32) -> Color {
+        Color {
+            red: self.red * intensity,
+            green: self.green * intensity,
+            blue: self.blue * intensity,
+        }
+    }
+}
+
+pub struct Material {
+    pub color: Color,
+    pub albedo: f32,
 }
 
 #[derive(Clone, Copy)]
@@ -25,8 +62,32 @@ impl Sub for Vector3 {
     }
 }
 
+impl Add for Vector3 {
+    type Output = Vector3;
+
+    fn add(self, other: Vector3) -> Vector3 {
+        Vector3 {x: self.x + other.x, y: self.y + other.y, z: self.z + other.z}
+    }
+}
+
+impl Mul<Vector3> for Vector3 {
+    type Output = Vector3;
+
+    fn mul(self, other: Vector3) -> Vector3 {
+        Vector3 {x: self.x * other.x, y: self.y * other.y, z: self.z * other.z}
+    }
+}
+
+impl Mul<f64> for Vector3 {
+    type Output = Vector3;
+
+    fn mul(self, other: f64) -> Vector3 {
+        Vector3 {x: self.x * other, y: self.y * other, z: self.z * other}
+    }
+}
+
 impl Vector3 {
-    pub fn normalize(&mut self) -> Vector3{
+    pub fn normalize(&self) -> Vector3{
         let length: f64 = (self.x.powi(2) + self.y.powi(2) + self.z.powi(2)).sqrt();
         Vector3 {
             x: self.x / length,
@@ -43,13 +104,13 @@ impl Vector3 {
 pub struct Sphere {
     pub center: Point,
     pub radius: f64,
-    pub color: Color,
+    pub material: Material,
 }
 
 pub struct Plane {
     pub p0: Point,
     pub normal: Vector3,
-    pub color: Color,
+    pub material: Material,
 }
 
 pub enum Element {
@@ -57,14 +118,22 @@ pub enum Element {
     Plane(Plane),
 }
 
+#[derive(Clone, Copy)]
+pub struct DirectionalLight {
+    pub direction: Vector3,
+    pub color: Color,
+    pub intensity: f32,
+}
+
 pub struct Scene {
     pub width: u32,
     pub height: u32,
     pub fov: f64,
     pub elements: Vec<Element>,
+    pub lights: Vec<DirectionalLight>,
 }
 
 pub struct Intersection<'a> {
     pub distance: f64,
-    pub object: &'a Element,
+    pub element: &'a Element,
 }

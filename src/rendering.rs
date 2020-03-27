@@ -28,13 +28,14 @@ impl Ray {
 
 pub trait Intersectable {
     fn intersect(&self, ray: &Ray) -> Option<f64>;
+    fn surface_normal(&self, p: &Point) -> Vector3;
 }
 
 impl <'a> Intersection<'a> {
     pub fn new<'b>(distance: f64, object: &'b Element) -> Intersection<'b> {
         Intersection {
             distance: distance,
-            object: object
+            element: object
         }
     }
 }
@@ -51,8 +52,14 @@ impl Scene {
 impl Element {
     pub fn color(&self) -> &Color {
         match *self {
-            Element::Sphere(ref s) => &s.color,
-            Element::Plane(ref p) => &p.color,
+            Element::Sphere(ref s) => &s.material.color,
+            Element::Plane(ref p) => &p.material.color,
+        }
+    }
+    pub fn material(&self) -> &Material {
+        match *self {
+            Element::Sphere(ref s) => &s.material,
+            Element::Plane(ref p) => &p.material,
         }
     }
 }
@@ -61,6 +68,13 @@ impl Intersectable for Element {
         match *self {
             Element::Sphere(ref s) => s.intersect(ray),
             Element::Plane(ref p) => p.intersect(ray),
+        }
+    }
+
+    fn surface_normal(&self, p: &Point) -> Vector3 {
+        match *self {
+            Element::Sphere(ref e) => e.surface_normal(p),
+            Element::Plane(ref e) => e.surface_normal(p),
         }
     }
 }
@@ -77,6 +91,10 @@ impl Intersectable for Plane {
             }
         }
         None
+    }
+
+    fn surface_normal(&self, _: &Point) -> Vector3{
+        self.normal * -1.0
     }
 }
 
@@ -99,5 +117,9 @@ impl Intersectable for Sphere {
 
        let distance = if t0 < t1 { t0 } else { t1 };
        Some(distance)
+    }
+
+    fn surface_normal(&self, p: &Point) -> Vector3 {
+        (*p - self.center).normalize()
     }
 }

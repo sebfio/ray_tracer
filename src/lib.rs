@@ -14,7 +14,7 @@ pub fn render(scene: &Scene) -> DynamicImage {
 
             match scene.trace(&ray) {
                 Some(intersection) => {
-                    let color: Color = *intersection.object.color();
+                    let color: Color = get_color(scene, &ray, &intersection);
                     let r = (color.red * 255.0) as u8;
                     let b = (color.blue * 255.0) as u8;
                     let g = (color.green * 255.0) as u8;
@@ -25,6 +25,23 @@ pub fn render(scene: &Scene) -> DynamicImage {
         }
     }
     image
+}
+
+fn get_color(scene: &Scene, ray: &Ray, intersection: &Intersection) -> Color {
+    let hit_point = ray.origin + (ray.direction * intersection.distance);
+    let surface_normal = intersection.element.surface_normal(&hit_point);
+
+    let mut color: Color = Color { red: 0.0, green: 0.0, blue: 0.0 };
+    for light in &scene.lights {
+        let direction_to_light = light.direction.normalize() * -1.0;
+        let light_power = (surface_normal.dot(&direction_to_light) as f32).max(0.0) *
+                        light.intensity;
+        let light_reflected = intersection.element.material().albedo / std::f32::consts::PI;
+
+        color = color + intersection.element.color().clone() * light.color.clone() * light_power *
+                    light_reflected;
+    }
+    color
 }
 
 #[test]
@@ -41,10 +58,13 @@ fn test_can_render_scene() {
                     z: -5.0,
                 },
                 radius: 1.0,
-                color: Color {
-                    red: 0.4,
-                    green: 1.0,
-                    blue: 0.4,
+                material: Material {
+                    color: Color {
+                        red: 0.4,
+                        green: 1.0,
+                        blue: 0.4,
+                    },
+                    albedo: 0.5,
                 },
             }),
             Element::Sphere( Sphere {
@@ -54,11 +74,14 @@ fn test_can_render_scene() {
                     z: -5.0,
                 },
                 radius: 1.2,
-                color: Color {
-                    red: 1.0,
-                    green: 1.0,
-                    blue: 0.4,
-                },
+                material: Material {
+                    color: Color {
+                        red: 1.0,
+                        green: 1.0,
+                        blue: 0.4,
+                    },
+                    albedo: 1.5,
+                }
             }),
             Element::Sphere( Sphere {
                 center: Point {
@@ -67,11 +90,14 @@ fn test_can_render_scene() {
                     z: -5.0,
                 },
                 radius: 1.7,
-                color: Color {
-                    red: 0.0,
-                    green: 0.2,
-                    blue: 1.0,
-                },
+                material: Material {
+                    color: Color {
+                        red: 0.0,
+                        green: 0.2,
+                        blue: 1.0,
+                    },
+                    albedo: 3.0,   
+                }
             }),
             Element::Plane( Plane {
                 p0: Point {
@@ -84,13 +110,31 @@ fn test_can_render_scene() {
                     y: -1.0,
                     z: 0.0,
                 },
-                color: Color  {
-                    red: 0.4,
-                    green: 0.4,
-                    blue: 0.1,
-                },
+                material: Material {
+                    color: Color  {
+                        red: 0.4,
+                        green: 0.4,
+                        blue: 0.1,
+                    },
+                    albedo: 2.0,
+                }
             })
         ],
+        lights: vec![
+            DirectionalLight {
+                direction: Vector3 {
+                    x: -0.707,
+                    y: -0.707,
+                    z: -1.0,
+                },
+                color: Color  {
+                    red: 1.0,
+                    green: 1.0,
+                    blue: 1.0,
+                },
+                intensity: 1.0
+            }
+        ]
     };
 
     let img: DynamicImage = render(&scene);
