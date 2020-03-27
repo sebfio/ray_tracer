@@ -125,12 +125,25 @@ pub struct DirectionalLight {
     pub intensity: f32,
 }
 
+#[derive(Clone, Copy)]
+pub struct SphericalLight {
+    pub point: Point,
+    pub color: Color,
+    pub intensity: f32,
+}
+
+pub enum Light {
+    Directional(DirectionalLight),
+    Spherical(SphericalLight),
+}
+
 pub struct Scene {
     pub width: u32,
     pub height: u32,
     pub fov: f64,
     pub elements: Vec<Element>,
     pub lights: Vec<DirectionalLight>,
+    pub shadow_bias: f64,
 }
 
 pub struct Intersection<'a> {
