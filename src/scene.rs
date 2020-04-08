@@ -41,9 +41,15 @@ impl Mul<f32> for Color {
     }
 }
 
+pub enum SurfaceType {
+    Diffuse,
+    Reflective { reflectivity: f32 },
+}
+
 pub struct Material {
     pub skin: Coloration,
     pub albedo: f32,
+    pub surface: SurfaceType,
 }
 
 pub enum Coloration {
@@ -216,6 +222,7 @@ pub struct Scene {
     pub elements: Vec<Element>,
     pub lights: Vec<Light>,
     pub shadow_bias: f64,
+    pub max_recursion_depth: u32,
 }
 
 pub struct Intersection<'a> {

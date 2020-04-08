@@ -24,6 +24,13 @@ impl Ray {
                 .normalize(),
         }
     }
+
+    pub fn create_reflection(surface_normal: Vector3, dir: Vector3, pt: Point, shadow_bias: f64) -> Ray {
+        Ray {
+            origin: pt + (surface_normal * shadow_bias),
+            direction: dir - (surface_normal * 2.0 * dir.dot(&surface_normal)),
+        }
+    }
 }
 
 

@@ -14,7 +14,7 @@ pub fn render(scene: &Scene) -> DynamicImage {
 
             match scene.trace(&ray) {
                 Some(intersection) => {
-                    let color: Color = get_color(scene, &ray, &intersection);
+                    let color: Color = get_color(scene, &ray, &intersection, 0);
                     let r = (color.red * 255.0) as u8;
                     let b = (color.blue * 255.0) as u8;
                     let g = (color.green * 255.0) as u8;
@@ -27,7 +27,7 @@ pub fn render(scene: &Scene) -> DynamicImage {
     image
 }
 
-fn get_color(scene: &Scene, ray: &Ray, intersection: &Intersection) -> Color {
+fn get_color(scene: &Scene, ray: &Ray, intersection: &Intersection, depth: u32) -> Color {
     let hit_point = ray.origin + (ray.direction * intersection.distance);
     let surface_normal = intersection.element.surface_normal(&hit_point);
 
@@ -66,8 +66,26 @@ fn get_color(scene: &Scene, ray: &Ray, intersection: &Intersection) -> Color {
         let light_color = light.color().clone() * light_power * light_reflected;
         let tc: TextureCoordinates = intersection.element.texture_coordinates(&hit_point);
         color = color + (intersection.element.skin().color(&tc) * light_color);
+
+        if let SurfaceType::Reflective { reflectivity } = intersection.element.material().surface {
+            let reflection_ray =
+                Ray::create_reflection(surface_normal, ray.direction, hit_point, scene.shadow_bias);
+            color = color * (1.0 - reflectivity);
+            color = color + (cast_ray(scene, &reflection_ray, depth + 1) * reflectivity);
+        }
     }
     color
+}
+
+pub fn cast_ray(scene: &Scene, ray: &Ray, depth: u32) -> Color {
+    let default: Color = Color { red: 0.7, green: 0.7, blue: 0.7};
+    if depth >= scene.max_recursion_depth {
+        return default;
+    }
+
+    let intersection = scene.trace(&ray);
+    intersection.map(|i| get_color(scene, &ray, &i, depth))
+        .unwrap_or(default)
 }
 
 #[test]
@@ -93,6 +111,7 @@ fn test_can_render_scene() {
                         blue: 0.4,
                     }),
                     albedo: 0.5,
+                    surface: SurfaceType::Diffuse,
                 },
             }),
             Element::Sphere( Sphere {
@@ -109,6 +128,7 @@ fn test_can_render_scene() {
                         blue: 0.4,
                     }),
                     albedo: 1.5,
+                    surface: SurfaceType::Diffuse,
                 }
             }),
             Element::Sphere( Sphere {
@@ -120,7 +140,8 @@ fn test_can_render_scene() {
                 radius: 1.7,
                 material: Material {
                     skin : Coloration::Texture(checkers.clone()),
-                    albedo: 2.0,   
+                    albedo: 2.0,
+                    surface: SurfaceType::Reflective{reflectivity : 0.3},
                 }
             }),
             Element::Plane( Plane {
@@ -137,6 +158,7 @@ fn test_can_render_scene() {
                 material: Material {
                     skin : Coloration::Texture(checkers.clone()),
                     albedo: 2.0,
+                    surface: SurfaceType::Reflective{reflectivity : 0.1},
                 }
             })
         ],
@@ -181,7 +203,8 @@ fn test_can_render_scene() {
                 intensity: 3.0,
             })
         ],
-        shadow_bias: 1e-10
+        shadow_bias: 1e-10,
+        max_recursion_depth: 4,
     };
 
     let img: DynamicImage = render(&scene);
