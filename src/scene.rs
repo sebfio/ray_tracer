@@ -1,4 +1,5 @@
 use std::ops::{Add, Sub, Mul};
+use image::*;
 
 #[derive(Clone, Copy)]
 pub struct Color {
@@ -41,8 +42,48 @@ impl Mul<f32> for Color {
 }
 
 pub struct Material {
-    pub color: Color,
+    pub skin: Coloration,
     pub albedo: f32,
+}
+
+pub enum Coloration {
+    Color(Color),
+    Texture(DynamicImage),
+}
+
+pub struct TextureCoordinates {
+    pub x: f32,
+    pub y: f32,
+}
+
+fn wrap(val: f32, bound: u32) -> u32 {
+    let signed_bound = bound as i32;
+    let float_coord = val * bound as f32;
+    let wrapped_coord = (float_coord as i32) % signed_bound;
+    if wrapped_coord < 0 {
+        (wrapped_coord + signed_bound) as u32
+    } else {
+        wrapped_coord as u32
+    }
+}
+
+impl Coloration {
+
+    pub fn color(&self, coords: &TextureCoordinates) -> Color {
+        match *self {
+            Coloration::Color(c) => c,
+            Coloration::Texture(ref texture) => {
+                let tex_x = wrap(coords.x, texture.width());
+                let tex_y = wrap(coords.y, texture.height());
+                let output = texture.get_pixel(tex_x, tex_y).to_rgb();
+                Color {
+                    red: (output[0] as f32) / 255.0,
+                    green: (output[1] as f32) / 255.0,
+                    blue: (output[2] as f32) / 255.0,
+                }
+            }
+        }
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -106,6 +147,14 @@ impl Vector3 {
 
     pub fn euclidean_distance(&self) -> f64 {
         (self.x.powi(2) + self.y.powi(2) + self.z.powi(2)).sqrt()
+    }
+
+    pub fn cross(&self, rhs: &Vector3) -> Vector3 {
+        Vector3 {
+            x: self.y * rhs.z - self.z * rhs.y,
+            y: self.z * rhs.x - self.x * rhs.z,
+            z: self.x * rhs.y - self.y * rhs.x,
+        }
     }
 }
 

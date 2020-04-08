@@ -7,7 +7,7 @@ use rendering::*;
 
 pub fn render(scene: &Scene) -> DynamicImage {
     let mut image = DynamicImage::new_rgb8(scene.width, scene.height);
-    let background = Rgba::from_channels(0, 0, 100, 0);
+    let background = Rgba::from_channels(50, 100, 220, 0);
     for x in 0..scene.width {
         for y in 0..scene.height {
             let ray = Ray::create_prime(x, y, scene);
@@ -64,13 +64,16 @@ fn get_color(scene: &Scene, ray: &Ray, intersection: &Intersection) -> Color {
         let light_reflected = intersection.element.material().albedo / std::f32::consts::PI;
 
         let light_color = light.color().clone() * light_power * light_reflected;
-        color = color + (*intersection.element.color() * light_color);
+        let tc: TextureCoordinates = intersection.element.texture_coordinates(&hit_point);
+        color = color + (intersection.element.skin().color(&tc) * light_color);
     }
     color
 }
 
 #[test]
 fn test_can_render_scene() {
+    let checkers = image::open("checkers.png").unwrap();
+
     let scene = Scene {
         width: 800,
         height: 600,
@@ -84,11 +87,11 @@ fn test_can_render_scene() {
                 },
                 radius: 0.5,
                 material: Material {
-                    color: Color {
+                    skin : Coloration::Color( Color {
                         red: 0.4,
                         green: 1.0,
                         blue: 0.4,
-                    },
+                    }),
                     albedo: 0.5,
                 },
             }),
@@ -100,11 +103,11 @@ fn test_can_render_scene() {
                 },
                 radius: 1.2,
                 material: Material {
-                    color: Color {
+                    skin : Coloration::Color( Color {
                         red: 1.0,
                         green: 1.0,
                         blue: 0.4,
-                    },
+                    }),
                     albedo: 1.5,
                 }
             }),
@@ -116,11 +119,7 @@ fn test_can_render_scene() {
                 },
                 radius: 1.7,
                 material: Material {
-                    color: Color {
-                        red: 0.0,
-                        green: 0.2,
-                        blue: 1.0,
-                    },
+                    skin : Coloration::Texture(checkers.clone()),
                     albedo: 2.0,   
                 }
             }),
@@ -136,11 +135,7 @@ fn test_can_render_scene() {
                     z: 0.0,
                 },
                 material: Material {
-                    color: Color  {
-                        red: 0.4,
-                        green: 0.4,
-                        blue: 0.1,
-                    },
+                    skin : Coloration::Texture(checkers.clone()),
                     albedo: 2.0,
                 }
             })
@@ -181,7 +176,7 @@ fn test_can_render_scene() {
                 color: Color {
                     red: 1.0,
                     green: 1.0,
-                    blue: 1.0,
+                    blue: 0.0,
                 },
                 intensity: 3.0,
             })
